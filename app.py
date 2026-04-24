@@ -104,3 +104,6 @@ with st.sidebar:
     if st.button("🔄 Reset session", use_container_width=True):
         reset_state(st.session_state)
         st.rerun()
+
+st.title("Agentic AI Coding & Interview Assistant")
+st.caption("Teach → Test → Evaluate → Adapt → Repeat. Works in any language, on any topic.")
