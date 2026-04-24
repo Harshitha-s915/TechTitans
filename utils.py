@@ -86,10 +86,6 @@ def parse_evaluation(text: str) -> dict:
     return {"verdict": verdict, "feedback": feedback, "hint": hint}
 
 
-# --------------------------------------------------------------------------
-# Offline fallback engine
-# --------------------------------------------------------------------------
-# Tiny built-in lessons so TEACH still works without an API key.
 _OFFLINE_LESSONS = {
     "loops": (
         "A **loop** repeatedly executes a block of code while a condition "
