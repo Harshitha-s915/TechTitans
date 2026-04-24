@@ -139,3 +139,15 @@ def decide_next_action(state: AgentState) -> str:
         return "evaluate"
 
     return "challenge"
+
+
+def explain_decision(state: AgentState, action: str) -> str:
+    """Human-readable reason for the suggested next action."""
+    reasons = {
+        "teach":     "You haven't learned this topic yet — let's start with a quick lesson.",
+        "challenge": "Time to put it into practice with a coding challenge.",
+        "evaluate":  "Submit your answer and I'll grade it.",
+        "hint":      f"You've missed {state.wrong_streak} in a row — here's a nudge.",
+        "interview": f"You're on a {state.correct_streak}-streak at difficulty {state.difficulty}/4 — let's try a real interview question.",
+    }
+    return reasons.get(action, "Let's continue.")
