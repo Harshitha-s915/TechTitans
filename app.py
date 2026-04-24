@@ -114,3 +114,16 @@ st.markdown(
     f"<code>{suggested.upper()}</code> — {agent.explain_decision(state, suggested)}</div>",
     unsafe_allow_html=True,
 )
+
+b1, b2, b3, b4, b5 = st.columns(5)
+do_teach     = b1.button("📘 Teach",        use_container_width=True, type="primary" if suggested == "teach" else "secondary")
+do_challenge = b2.button("🎯 Start Challenge", use_container_width=True, type="primary" if suggested == "challenge" else "secondary")
+do_hint      = b3.button("💡 Hint",         use_container_width=True, type="primary" if suggested == "hint" else "secondary")
+do_interview = b4.button("🎤 Interview Mode", use_container_width=True, type="primary" if suggested == "interview" else "secondary")
+do_auto      = b5.button("✨ Auto (do suggested)", use_container_width=True)
+
+if do_auto:
+    if   suggested == "teach":     do_teach = True
+    elif suggested == "challenge": do_challenge = True
+    elif suggested == "hint":      do_hint = True
+    elif suggested == "interview": do_interview = True
