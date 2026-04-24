@@ -110,3 +110,22 @@ def evaluate_interview(state: AgentState, answer: str) -> Tuple[Dict, str]:
         temperature=0.2,
     )
     return parse_evaluation(text), provider
+
+def decide_next_action(state: AgentState) -> str:
+    """
+    Returns one of: 'teach' | 'challenge' | 'evaluate' | 'hint' | 'interview'.
+
+    Logic mirrors the spec:
+      - new user (no phase yet) → TEACH
+      - just taught → CHALLENGE
+      - challenged but no submission tracked → wait (still 'evaluate' once they submit)
+      - struggling (2+ wrong in a row OR last verdict INCORRECT) → HINT
+      - performing well (3+ correct streak AND difficulty maxed-ish) → INTERVIEW
+      - default → CHALLENGE
+    """
+    if state.phase == "idle":
+        return "teach"
+
+    if state.phase == "taught":
+        return "challenge"
+
