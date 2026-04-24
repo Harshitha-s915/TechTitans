@@ -137,3 +137,32 @@ def register_hint(s: AgentState) -> None:
 
 def register_interview_pass(s: AgentState) -> List[str]:
     return _award(s, "interviewer")
+
+def _adapt_difficulty(s: AgentState) -> None:
+    """2 correct in a row → bump up. 2 wrong in a row → drop down."""
+    if s.correct_streak >= 2 and s.difficulty < DIFF_MAX:
+        s.difficulty += 1
+        s.correct_streak = 0
+    elif s.wrong_streak >= 2 and s.difficulty > DIFF_MIN:
+        s.difficulty -= 1
+        s.wrong_streak = 0
+
+
+def _award(s: AgentState, badge_key: str) -> List[str]:
+    if badge_key in BADGES and badge_key not in s.badges:
+        s.badges.append(badge_key)
+        return [BADGES[badge_key]]
+    return []
+
+
+def _check_coverage_badges(s: AgentState) -> List[str]:
+    earned: List[str] = []
+    if len(s.languages_seen) >= 3:
+        earned += _award(s, "polyglot")
+    if len(s.topics_seen) >= 5:
+        earned += _award(s, "explorer")
+    return earned
+
+
+def to_dict(s: AgentState) -> Dict[str, Any]:
+    return asdict(s)
