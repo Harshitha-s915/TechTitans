@@ -73,3 +73,17 @@ class AgentState:
         if total == 0:
             return 0.0
         return (self.total_correct + 0.5 * self.total_partial) / total
+
+_KEY = "agent_state"
+
+
+def init_state(session_state) -> AgentState:
+    """Attach an AgentState to st.session_state; return the live instance."""
+    if _KEY not in session_state:
+        session_state[_KEY] = AgentState()
+    return session_state[_KEY]
+
+
+def reset_state(session_state) -> AgentState:
+    session_state[_KEY] = AgentState()
+    return session_state[_KEY]
