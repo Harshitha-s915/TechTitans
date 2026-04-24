@@ -87,3 +87,53 @@ def init_state(session_state) -> AgentState:
 def reset_state(session_state) -> AgentState:
     session_state[_KEY] = AgentState()
     return session_state[_KEY]
+
+def record_topic(s: AgentState, topic: str, language: str) -> None:
+    if topic and topic not in s.topics_seen:
+        s.topics_seen.append(topic)
+    if language and language not in s.languages_seen:
+        s.languages_seen.append(language)
+    _check_coverage_badges(s)
+
+
+def add_history(s: AgentState, role: str, content: str) -> None:
+    s.history.append({"role": role, "content": content})
+
+
+def register_evaluation(s: AgentState, verdict: str) -> List[str]:
+    """Update streaks, XP, difficulty. Returns list of newly earned badges."""
+    verdict = (verdict or "").upper().strip()
+    earned: List[str] = []
+
+    if verdict == "CORRECT":
+        s.total_correct += 1
+        s.correct_streak += 1
+        s.wrong_streak = 0
+        s.xp += XP_PER_CORRECT
+        if s.total_correct == 1:
+            earned += _award(s, "first_blood")
+        if s.correct_streak == 3:
+            earned += _award(s, "streak_3")
+        if s.correct_streak == 5:
+            earned += _award(s, "streak_5")
+    elif verdict == "PARTIAL":
+        s.total_partial += 1
+        s.correct_streak = 0
+        s.xp += XP_PER_PARTIAL
+    else:  # INCORRECT or unknown
+        s.total_wrong += 1
+        s.wrong_streak += 1
+        s.correct_streak = 0
+
+    _adapt_difficulty(s)
+    earned += _check_coverage_badges(s)
+    return earned
+
+
+def register_hint(s: AgentState) -> None:
+    s.hints_used += 1
+    s.xp = max(0, s.xp + XP_PER_HINT_USE)
+
+
+def register_interview_pass(s: AgentState) -> List[str]:
+    return _award(s, "interviewer")
