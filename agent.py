@@ -129,3 +129,13 @@ def decide_next_action(state: AgentState) -> str:
     if state.phase == "taught":
         return "challenge"
 
+    if state.wrong_streak >= 2 or state.last_verdict == "INCORRECT":
+        return "hint"
+
+    if state.correct_streak >= 3 and state.difficulty >= 3:
+        return "interview"
+
+    if state.phase == "challenged":
+        return "evaluate"
+
+    return "challenge"
