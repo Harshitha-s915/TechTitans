@@ -298,7 +298,7 @@ def offline_evaluate(challenge: str, answer: str, topic: str, language: str) -> 
                 "function signature and the base case before submitting.\n"
                 "HINT: Start by writing the function header and a return statement "
                 "for the simplest input.")
-     line_count = len([ln for ln in a.splitlines() if ln.strip()])
+    line_count = len([ln for ln in a.splitlines() if ln.strip()])
     has_return = bool(re.search(r"\breturn\b", a))
     has_loop_or_rec = bool(re.search(r"\bfor\b|\bwhile\b", a)) or _looks_recursive(a)
     mentions_topic = _norm(topic) in _norm(a) or any(
@@ -313,3 +313,26 @@ def offline_evaluate(challenge: str, answer: str, topic: str, language: str) -> 
 
     if score >= 3:
         verdict = "PARTIAL" 
+        feedback = ("Your answer has the right structure for this topic. "
+                    "Without an LLM I can't fully verify correctness, so I'm marking "
+                    "it PARTIAL. Walk through it with a sample input to confirm.")
+        hint = "Trace your code on the example input by hand to spot off-by-one errors."
+    elif score >= 1:
+        verdict = "PARTIAL"
+        feedback = ("You're on the right track but the answer is missing key "
+                    "elements expected for this topic.")
+        hint = f"Make sure your code actually uses {topic} and returns/prints a result."
+    else:
+        verdict = "INCORRECT"
+        feedback = ("The submitted code doesn't appear to address the challenge. "
+                    "Re-read the problem statement and identify the required output.")
+        hint = "Start small: write the simplest version that handles one example input."
+    return f"VERDICT: {verdict}\nFEEDBACK: {feedback}\nHINT: {hint}"
+
+
+def offline_hint(challenge: str, answer: str, topic: str, language: str) -> str:
+    keywords = _topic_keywords(topic)
+    kw = keywords[0] if keywords else topic
+    return (f"Think about what `{kw}` does in {language}: "
+            f"identify the smallest sub-problem first, then extend it. "
+            f"Try writing one line that handles the example input.")
