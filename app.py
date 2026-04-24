@@ -235,3 +235,16 @@ with right:
             )
             _toast_badges(new_badges)
             st.rerun()
+
+if state.last_verdict:
+    cls = {
+        "CORRECT":   "verdict-correct",
+        "PARTIAL":   "verdict-partial",
+        "INCORRECT": "verdict-incorrect",
+    }.get(state.last_verdict, "verdict-partial")
+    icon = {"CORRECT": "✅", "PARTIAL": "🟡", "INCORRECT": "❌"}[state.last_verdict]
+    hint_html = f"<br/><br/>💡 <b>Hint:</b> {state.last_hint}" if state.last_hint else ""
+    st.markdown(
+        f"<div class='{cls}'>{icon} <b>{state.last_verdict}</b> — {state.last_feedback}{hint_html}</div>",
+        unsafe_allow_html=True,
+    )
