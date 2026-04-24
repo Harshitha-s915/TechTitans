@@ -43,3 +43,64 @@ st.markdown(
 
 state = init_state(st.session_state)
 state.provider = active_provider()
+
+with st.sidebar:
+    st.title("🤖 Agentic Tutor")
+
+    provider_label = "🟢 Groq (live)" if state.provider == "groq" else "🟡 Offline fallback"
+    st.caption(f"Provider: **{provider_label}**")
+    if state.provider == "offline":
+        st.info(
+            "No `GROQ_API_KEY` detected. Add one to `.env` for richer "
+            "lessons & evaluations. The app still works fully offline.",
+            icon="ℹ️",
+        )
+
+    st.markdown("### ⚙️ Settings")
+
+    common_topics = [
+        "loops", "arrays", "functions", "recursion", "conditionals",
+        "strings", "dictionaries", "classes", "pointers", "OOP",
+        "sorting", "searching", "data structures", "custom…",
+    ]
+    pick = st.selectbox("Topic", common_topics, index=common_topics.index(state.topic) if state.topic in common_topics else 0)
+    if pick == "custom…":
+        state.topic = st.text_input("Custom topic", value=state.topic, placeholder="e.g. binary search")
+    else:
+        state.topic = pick
+
+    state.language = st.selectbox(
+        "Language",
+        ["Python", "Java", "C", "C++", "JavaScript", "TypeScript", "Go", "Rust"],
+        index=0 if state.language == "Python" else
+              ["Python", "Java", "C", "C++", "JavaScript", "TypeScript", "Go", "Rust"].index(state.language),
+    )
+
+    state.difficulty = st.slider(
+        "Difficulty (auto-adapts)", 1, 4, value=state.difficulty,
+        help="The agent will bump this up when you do well, down when you struggle.",
+    )
+
+    st.markdown("---")
+    st.markdown("### 🎮 Stats")
+    c1, c2 = st.columns(2)
+    c1.metric("Level", state.level)
+    c2.metric("XP", state.xp)
+    st.progress(state.xp_into_level / XP_TO_LEVEL, text=f"{state.xp_into_level}/{XP_TO_LEVEL} XP to next level")
+    c3, c4, c5 = st.columns(3)
+    c3.metric("Streak", state.correct_streak)
+    c4.metric("Correct", state.total_correct)
+    c5.metric("Accuracy", f"{state.accuracy*100:.0f}%")
+
+    if state.badges:
+        st.markdown("### 🏆 Badges")
+        from state import BADGES
+        st.markdown(
+            " ".join(f"<span class='badge-pill'>{BADGES[b]}</span>" for b in state.badges),
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("---")
+    if st.button("🔄 Reset session", use_container_width=True):
+        reset_state(st.session_state)
+        st.rerun()
