@@ -170,3 +170,68 @@ if do_hint:
         state.last_hint = text
         register_hint(state)
         add_history(state, "agent", f"**Hint** ({prov})\n\n{text}")
+
+left, right = st.columns([1.1, 1])
+
+with left:
+    st.subheader("📖 Current")
+    if state.phase == "idle":
+        st.info("Pick a topic in the sidebar and click **Teach** or **Auto** to begin.")
+    elif state.phase == "taught" and state.last_lesson:
+        st.markdown(state.last_lesson)
+    elif state.phase in ("challenged", "interview", "evaluated") and state.last_challenge:
+        if state.phase == "interview":
+            st.markdown("### 🎤 Interview Question")
+        else:
+            st.markdown("### 🎯 Challenge")
+        st.markdown(state.last_challenge)
+        if state.last_hint:
+            st.markdown(f"💡 **Last hint:** {state.last_hint}")
+    elif state.last_lesson:
+        st.markdown(state.last_lesson)
+
+with right:
+    st.subheader("✍️ Your Answer")
+    answer = st.text_area(
+        f"Write your {state.language} solution here",
+        value=state.last_user_answer,
+        height=260,
+        placeholder=f"# Write your {state.language} solution and click Submit Answer",
+        label_visibility="collapsed",
+    )
+    s1, s2 = st.columns(2)
+    submit  = s1.button("✅ Submit Answer", use_container_width=True, type="primary")
+    clear   = s2.button("🧹 Clear",         use_container_width=True)
+
+    if clear:
+        state.last_user_answer = ""
+        st.rerun()
+
+    if submit:
+        if not state.last_challenge:
+            st.warning("There's no active challenge — click **Start Challenge** or **Interview Mode** first.")
+        elif not answer.strip():
+            st.warning("Please write an answer before submitting.")
+        else:
+            state.last_user_answer = answer
+            with st.spinner("Evaluating your answer…"):
+                if state.phase == "interview":
+                    result, prov = agent.evaluate_interview(state, answer)
+                else:
+                    result, prov = agent.evaluate(state, answer)
+
+            state.last_verdict = result["verdict"]
+            state.last_feedback = result["feedback"]
+            state.last_hint = result["hint"]
+            new_badges = register_evaluation(state, result["verdict"])
+            if state.phase == "interview" and result["verdict"] == "CORRECT":
+                new_badges += register_interview_pass(state)
+            state.phase = "evaluated"
+
+            add_history(
+                state, "agent",
+                f"**Evaluation** ({prov}) — **{result['verdict']}**\n\n{result['feedback']}"
+                + (f"\n\n💡 _Hint:_ {result['hint']}" if result["hint"] else "")
+            )
+            _toast_badges(new_badges)
+            st.rerun()
