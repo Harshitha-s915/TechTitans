@@ -201,3 +201,100 @@ def offline_lesson(topic: str, language: str, difficulty: int) -> str:
         f"_The snippet above is the minimal working example at level {difficulty}._\n\n"
         f"### Quick Check\n{check}"
     )
+_OFFLINE_CHALLENGE_BANK = {
+    "loops": [
+        ("Print all even numbers from 1 to N.",
+         "An integer N (1 ≤ N ≤ 100).",
+         "Even numbers from 1 to N, one per line.",
+         "Input: 6\nOutput: 2\n4\n6"),
+        ("Compute the sum of integers 1..N.",
+         "An integer N.",
+         "The sum 1+2+…+N.",
+         "Input: 5\nOutput: 15"),
+    ],
+    "arrays": [
+        ("Return the maximum value in an array.",
+         "A list of integers.",
+         "The maximum integer.",
+         "Input: [3, 1, 7, 4]\nOutput: 7"),
+        ("Reverse an array in place.",
+         "A list of integers.",
+         "The reversed list.",
+         "Input: [1, 2, 3]\nOutput: [3, 2, 1]"),
+    ],
+    "functions": [
+        ("Write a function `is_even(n)` that returns True if n is even.",
+         "An integer n.",
+         "Boolean.",
+         "Input: 4\nOutput: True"),
+    ],
+    "recursion": [
+        ("Compute factorial(n) using recursion.",
+         "A non-negative integer n.",
+         "n!",
+         "Input: 5\nOutput: 120"),
+        ("Compute the nth Fibonacci number recursively.",
+         "A non-negative integer n.",
+         "F(n)",
+         "Input: 6\nOutput: 8"),
+    ],
+    "conditionals": [
+        ("Given an integer, print 'positive', 'negative', or 'zero'.",
+         "An integer x.",
+         "One of the three strings.",
+         "Input: -3\nOutput: negative"),
+    ],
+    "strings": [
+        ("Check whether a string is a palindrome.",
+         "A string s.",
+         "True or False.",
+         "Input: 'racecar'\nOutput: True"),
+    ],
+    "dictionaries": [
+        ("Count how many times each character appears in a string.",
+         "A string s.",
+         "A dict char -> count.",
+         "Input: 'aab'\nOutput: {'a': 2, 'b': 1}"),
+    ],
+    "classes": [
+        ("Define a class `Counter` with `inc()` and `value()`.",
+         "A sequence of inc() calls.",
+         "Final counter value.",
+         "Input: inc, inc, inc\nOutput: 3"),
+    ],
+}
+
+
+def offline_challenge(topic: str, language: str, difficulty: int) -> str:
+    bank = _OFFLINE_CHALLENGE_BANK.get(_norm(topic))
+    if not bank:
+        problem = (
+            f"Write a {language} program that demonstrates the concept of "
+            f"**{topic}** at difficulty {difficulty}/4."
+        )
+        return _format_challenge(problem, "Free-form.", "Free-form.", "—")
+    idx = min(difficulty - 1, len(bank) - 1)
+    problem, inp, out, ex = bank[idx]
+    return _format_challenge(problem, inp, out, ex)
+
+
+def offline_interview(topic: str, language: str, difficulty: int, time_limit: int) -> str:
+    base = offline_challenge(topic, language, difficulty)
+    return (
+        "**Interview Question**\n"
+        f"{base}\n\n"
+        f"**Time limit:** {time_limit} minutes\n\n"
+        "**What I'm looking for:**\n"
+        "- Correctness\n- Time/space complexity\n- Edge cases\n"
+    )
+
+
+def offline_evaluate(challenge: str, answer: str, topic: str, language: str) -> str:
+    """Heuristic offline evaluation — never claims certainty."""
+    a = (answer or "").strip()
+    if not a:
+        return ("VERDICT: INCORRECT\n"
+                "FEEDBACK: You didn't submit any code. Try writing at least the "
+                "function signature and the base case before submitting.\n"
+                "HINT: Start by writing the function header and a return statement "
+                "for the simplest input.")
