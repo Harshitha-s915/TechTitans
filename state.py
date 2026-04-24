@@ -58,6 +58,13 @@ class AgentState:
     # Provider info shown in sidebar
     provider: str = "offline"  # 'groq' or 'offline'
 
+    # Profile / dashboard extras
+    xp_history: List[int] = field(default_factory=list)
+    topic_history: List[str] = field(default_factory=list)
+    easy_solved: int = 0
+    medium_solved: int = 0
+    hard_solved: int = 0
+
     # ---- Derived ----
     @property
     def level(self) -> int:
@@ -74,25 +81,115 @@ class AgentState:
             return 0.0
         return (self.total_correct + 0.5 * self.total_partial) / total
 
-_KEY = "agent_state"
+
+# ─────────────────────────────────────────────────────────────────
+# Per-user state key  →  "agent_state:<username>"
+# Falls back to the old global key if username is not set yet
+# (e.g. during login page render before honor_name is written)
+# ─────────────────────────────────────────────────────────────────
+_GLOBAL_KEY = "agent_state"   # legacy / fallback
+_ALL_USERS_KEY = "all_user_states"  # dict: username -> serialised state dict
+
+
+def _user_key(session_state) -> str:
+    """Return the session_state key for the currently logged-in user."""
+    username = (session_state.get("honor_name") or "").strip().lower()
+    if username:
+        return f"agent_state:{username}"
+    return _GLOBAL_KEY
+
+
+def _load_persisted(session_state, username: str) -> AgentState:
+    """
+    Restore a previously saved AgentState for `username` if one exists.
+    Stored in session_state[_ALL_USERS_KEY][username] as a plain dict so
+    that switching users in the same browser session restores the right data.
+    """
+    all_states: dict = session_state.get(_ALL_USERS_KEY, {})
+    saved: dict | None = all_states.get(username)
+    if not saved:
+        return AgentState()
+
+    # Build AgentState from saved dict, ignoring unknown keys gracefully
+    valid_fields = {f.name for f in AgentState.__dataclass_fields__.values()}
+    filtered = {k: v for k, v in saved.items() if k in valid_fields}
+    return AgentState(**filtered)
+
+
+def _persist(session_state, username: str, state: AgentState) -> None:
+    """Save current AgentState into the cross-user store."""
+    if not username:
+        return
+    if _ALL_USERS_KEY not in session_state:
+        session_state[_ALL_USERS_KEY] = {}
+    session_state[_ALL_USERS_KEY][username] = asdict(state)
 
 
 def init_state(session_state) -> AgentState:
-    """Attach an AgentState to st.session_state; return the live instance."""
-    if _KEY not in session_state:
-        session_state[_KEY] = AgentState()
-    return session_state[_KEY]
+    """
+    Return the AgentState for the currently logged-in user.
+    - First call for a user  → load from persisted store (or create fresh).
+    - Subsequent calls       → return the already-attached instance.
+    """
+    key = _user_key(session_state)
+    username = (session_state.get("honor_name") or "").strip().lower()
+
+    if key not in session_state:
+        # Load persisted state for this user (or brand-new AgentState)
+        session_state[key] = _load_persisted(session_state, username)
+
+    return session_state[key]
+
+
+def save_state(session_state) -> None:
+    """
+    Explicitly persist the current user's state into the cross-user store.
+    Call this after any mutation you want to survive a user switch.
+    """
+    key = _user_key(session_state)
+    username = (session_state.get("honor_name") or "").strip().lower()
+    if key in session_state:
+        _persist(session_state, username, session_state[key])
 
 
 def reset_state(session_state) -> AgentState:
-    session_state[_KEY] = AgentState()
-    return session_state[_KEY]
+    """Reset only the current user's state; other users are untouched."""
+    key = _user_key(session_state)
+    username = (session_state.get("honor_name") or "").strip().lower()
+    fresh = AgentState()
+    session_state[key] = fresh
+    _persist(session_state, username, fresh)
+    return fresh
+
+
+def switch_user(session_state, old_username: str, new_username: str) -> None:
+    """
+    Called on logout / login transition.
+    1. Saves the old user's state.
+    2. Removes the old key so the new user starts fresh from their own store.
+    """
+    old_key = f"agent_state:{old_username.strip().lower()}" if old_username else _GLOBAL_KEY
+    if old_key in session_state:
+        _persist(session_state, old_username.strip().lower(), session_state[old_key])
+        del session_state[old_key]
+
+    # Also clear the legacy global key if it exists
+    if _GLOBAL_KEY in session_state:
+        del session_state[_GLOBAL_KEY]
+
+
+# ─────────────────────────────────────────────────────────────────
+# Domain helpers (unchanged logic, same signatures)
+# ─────────────────────────────────────────────────────────────────
 
 def record_topic(s: AgentState, topic: str, language: str) -> None:
     if topic and topic not in s.topics_seen:
         s.topics_seen.append(topic)
     if language and language not in s.languages_seen:
         s.languages_seen.append(language)
+    # Also track for profile topic pills (deduplicated)
+    if topic and topic not in s.topic_history:
+        s.topic_history.append(topic)
     _check_coverage_badges(s)
 
 
@@ -101,7 +198,7 @@ def add_history(s: AgentState, role: str, content: str) -> None:
 
 
 def register_evaluation(s: AgentState, verdict: str) -> List[str]:
-    """Update streaks, XP, difficulty. Returns list of newly earned badges."""
+    """Update streaks, XP, difficulty. Returns list of newly earned badge strings."""
     verdict = (verdict or "").upper().strip()
     earned: List[str] = []
 
@@ -110,6 +207,15 @@ def register_evaluation(s: AgentState, verdict: str) -> List[str]:
         s.correct_streak += 1
         s.wrong_streak = 0
         s.xp += XP_PER_CORRECT
+        # Track XP history snapshot
+        s.xp_history.append(s.xp)
+        # Track difficulty breakdown
+        if s.difficulty == 1:
+            s.easy_solved += 1
+        elif s.difficulty == 2:
+            s.medium_solved += 1
+        else:
+            s.hard_solved += 1
         if s.total_correct == 1:
             earned += _award(s, "first_blood")
         if s.correct_streak == 3:
@@ -137,6 +243,7 @@ def register_hint(s: AgentState) -> None:
 
 def register_interview_pass(s: AgentState) -> List[str]:
     return _award(s, "interviewer")
+
 
 def _adapt_difficulty(s: AgentState) -> None:
     """2 correct in a row → bump up. 2 wrong in a row → drop down."""
