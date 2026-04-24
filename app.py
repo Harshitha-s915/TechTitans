@@ -40,3 +40,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+state = init_state(st.session_state)
+state.provider = active_provider()
