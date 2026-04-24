@@ -107,3 +107,10 @@ with st.sidebar:
 
 st.title("Agentic AI Coding & Interview Assistant")
 st.caption("Teach → Test → Evaluate → Adapt → Repeat. Works in any language, on any topic.")
+
+suggested = agent.decide_next_action(state)
+st.markdown(
+    f"<div class='agent-suggestion'>🧭 <b>Agent suggests:</b> "
+    f"<code>{suggested.upper()}</code> — {agent.explain_decision(state, suggested)}</div>",
+    unsafe_allow_html=True,
+)
