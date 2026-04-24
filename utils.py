@@ -298,3 +298,18 @@ def offline_evaluate(challenge: str, answer: str, topic: str, language: str) -> 
                 "function signature and the base case before submitting.\n"
                 "HINT: Start by writing the function header and a return statement "
                 "for the simplest input.")
+     line_count = len([ln for ln in a.splitlines() if ln.strip()])
+    has_return = bool(re.search(r"\breturn\b", a))
+    has_loop_or_rec = bool(re.search(r"\bfor\b|\bwhile\b", a)) or _looks_recursive(a)
+    mentions_topic = _norm(topic) in _norm(a) or any(
+        kw in a.lower() for kw in _topic_keywords(topic)
+    )
+
+    score = 0
+    score += 1 if line_count >= 2 else 0
+    score += 1 if has_return or "print" in a.lower() or "console.log" in a.lower() else 0
+    score += 1 if has_loop_or_rec or _norm(topic) in {"functions", "classes", "conditionals"} else 0
+    score += 1 if mentions_topic else 0
+
+    if score >= 3:
+        verdict = "PARTIAL" 
