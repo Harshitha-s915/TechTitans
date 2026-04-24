@@ -66,3 +66,17 @@ def evaluate(state: AgentState, answer: str) -> Tuple[Dict, str]:
         temperature=0.2,
     )
     return parse_evaluation(text), provider
+def hint(state: AgentState, answer: str = "") -> Tuple[str, str]:
+    fallback = offline_hint(state.last_challenge, answer, state.topic, state.language)
+    text, provider = llm_complete(
+        SYSTEM_PROMPT,
+        HINT_PROMPT.format(
+            challenge=state.last_challenge or "(no challenge yet)",
+            answer=answer or "(empty)",
+            language=state.language,
+        ),
+        fallback=fallback,
+        temperature=0.5,
+        max_tokens=300,
+    )
+    return text, provider
