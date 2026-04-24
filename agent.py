@@ -47,3 +47,18 @@ def challenge(state: AgentState) -> Tuple[str, str]:
         temperature=0.7,
     )
     return text, provider
+def evaluate(state: AgentState, answer: str) -> Tuple[Dict, str]:
+    fallback = offline_evaluate(state.last_challenge, answer, state.topic, state.language)
+    text, provider = llm_complete(
+        SYSTEM_PROMPT,
+        EVALUATE_PROMPT.format(
+            topic=state.topic,
+            language=state.language,
+            difficulty=state.difficulty,
+            challenge=state.last_challenge or "(no challenge in context)",
+            answer=answer,
+        ),
+        fallback=fallback,
+        temperature=0.2,
+    )
+    return parse_evaluation(text), provider
