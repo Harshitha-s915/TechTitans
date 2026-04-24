@@ -8,7 +8,9 @@ from typing import Tuple, Optional
 
 import requests
 from dotenv import load_dotenv
+import re
 
+_VERDICT_RE = re.compile(r"(correct|incorrect|partial)", re.IGNORECASE)
 load_dotenv()
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
