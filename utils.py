@@ -65,3 +65,139 @@ def llm_complete(
         return text, "groq"
     except Exception:
         return fallback, "offline"
+    
+    _VERDICT_RE = re.compile(r"VERDICT\s*:\s*(CORRECT|PARTIAL|INCORRECT)", re.I)
+_FEEDBACK_RE = re.compile(r"FEEDBACK\s*:\s*(.+?)(?:\nHINT\s*:|\Z)", re.I | re.S)
+_HINT_RE = re.compile(r"HINT\s*:\s*(.+?)\Z", re.I | re.S)
+
+
+def parse_evaluation(text: str) -> dict:
+    verdict_m = _VERDICT_RE.search(text or "")
+    verdict = verdict_m.group(1).upper() if verdict_m else "PARTIAL"
+
+    feedback_m = _FEEDBACK_RE.search(text or "")
+    feedback = feedback_m.group(1).strip() if feedback_m else (text or "").strip()
+
+    hint_m = _HINT_RE.search(text or "")
+    hint = hint_m.group(1).strip() if hint_m else ""
+    if hint.upper().startswith("N/A"):
+        hint = ""
+
+    return {"verdict": verdict, "feedback": feedback, "hint": hint}
+
+
+# --------------------------------------------------------------------------
+# Offline fallback engine
+# --------------------------------------------------------------------------
+# Tiny built-in lessons so TEACH still works without an API key.
+_OFFLINE_LESSONS = {
+    "loops": (
+        "A **loop** repeatedly executes a block of code while a condition "
+        "holds, letting you process collections or repeat work without "
+        "duplicating code."
+    ),
+    "arrays": (
+        "An **array** (or list) stores an ordered, indexed collection of "
+        "values. You access elements by their integer position (index)."
+    ),
+    "functions": (
+        "A **function** is a named, reusable block of code that takes "
+        "inputs (parameters), performs work, and may return a result."
+    ),
+    "recursion": (
+        "**Recursion** is when a function calls itself to solve a smaller "
+        "instance of the same problem. It needs a base case to stop."
+    ),
+    "conditionals": (
+        "**Conditionals** let a program choose between paths of execution "
+        "based on whether a boolean expression is true."
+    ),
+    "strings": (
+        "A **string** is an ordered sequence of characters. Most languages "
+        "treat strings as immutable and provide rich operations on them."
+    ),
+    "dictionaries": (
+        "A **dictionary** (a.k.a. map / hash table) stores key→value pairs "
+        "with average O(1) lookup, insertion, and deletion."
+    ),
+    "classes": (
+        "A **class** is a blueprint for creating objects that bundle data "
+        "(attributes) with behavior (methods)."
+    ),
+}
+
+_OFFLINE_SYNTAX = {
+    "Python": {
+        "loops": "for i in range(5):\n    print(i)",
+        "arrays": "nums = [1, 2, 3]\nprint(nums[0])",
+        "functions": "def add(a, b):\n    return a + b",
+        "recursion": "def fact(n):\n    return 1 if n <= 1 else n * fact(n - 1)",
+        "conditionals": "if x > 0:\n    print('positive')\nelse:\n    print('non-positive')",
+        "strings": "s = 'hello'\nprint(s.upper())",
+        "dictionaries": "d = {'a': 1, 'b': 2}\nprint(d['a'])",
+        "classes": "class Dog:\n    def __init__(self, name):\n        self.name = name",
+    },
+    "Java": {
+        "loops": "for (int i = 0; i < 5; i++) {\n    System.out.println(i);\n}",
+        "arrays": "int[] nums = {1, 2, 3};\nSystem.out.println(nums[0]);",
+        "functions": "static int add(int a, int b) { return a + b; }",
+        "recursion": "static int fact(int n) { return n <= 1 ? 1 : n * fact(n - 1); }",
+        "conditionals": "if (x > 0) System.out.println(\"positive\");\nelse System.out.println(\"non-positive\");",
+        "strings": "String s = \"hello\";\nSystem.out.println(s.toUpperCase());",
+        "dictionaries": "Map<String,Integer> d = new HashMap<>();\nd.put(\"a\", 1);",
+        "classes": "class Dog {\n    String name;\n    Dog(String n) { name = n; }\n}",
+    },
+    "C": {
+        "loops": "for (int i = 0; i < 5; i++) {\n    printf(\"%d\\n\", i);\n}",
+        "arrays": "int nums[3] = {1, 2, 3};\nprintf(\"%d\\n\", nums[0]);",
+        "functions": "int add(int a, int b) { return a + b; }",
+        "recursion": "int fact(int n) { return n <= 1 ? 1 : n * fact(n - 1); }",
+        "conditionals": "if (x > 0) printf(\"positive\\n\"); else printf(\"non-positive\\n\");",
+        "strings": "char s[] = \"hello\";\nprintf(\"%s\\n\", s);",
+        "dictionaries": "// C has no built-in dict — use a struct array or hash table lib.",
+        "classes": "// C has no classes — use struct + functions taking the struct as 1st arg.",
+    },
+    "JavaScript": {
+        "loops": "for (let i = 0; i < 5; i++) {\n  console.log(i);\n}",
+        "arrays": "const nums = [1, 2, 3];\nconsole.log(nums[0]);",
+        "functions": "function add(a, b) { return a + b; }",
+        "recursion": "function fact(n) { return n <= 1 ? 1 : n * fact(n - 1); }",
+        "conditionals": "if (x > 0) console.log('positive');\nelse console.log('non-positive');",
+        "strings": "const s = 'hello';\nconsole.log(s.toUpperCase());",
+        "dictionaries": "const d = { a: 1, b: 2 };\nconsole.log(d.a);",
+        "classes": "class Dog {\n  constructor(name) { this.name = name; }\n}",
+    },
+}
+
+_OFFLINE_CHECK_QUESTION = {
+    "loops": "Why might you prefer a `for` loop over a `while` loop here?",
+    "arrays": "What is the time complexity of indexing into an array?",
+    "functions": "What's the difference between a parameter and an argument?",
+    "recursion": "What happens if you forget the base case?",
+    "conditionals": "What does an `else if` chain give you over nested `if`s?",
+    "strings": "Are strings mutable or immutable in your chosen language?",
+    "dictionaries": "What is the average lookup complexity of a dictionary?",
+    "classes": "What's the difference between a class and an instance?",
+}
+
+
+def offline_lesson(topic: str, language: str, difficulty: int) -> str:
+    t = _norm(topic)
+    syntax = _OFFLINE_SYNTAX.get(language, {}).get(
+        t, f"// No built-in offline syntax for {topic} in {language}."
+    )
+    definition = _OFFLINE_LESSONS.get(
+        t,
+        f"**{topic.title()}** is a programming concept in {language}. "
+        f"(Offline mode — connect a Groq key for richer explanations.)",
+    )
+    check = _OFFLINE_CHECK_QUESTION.get(
+        t, f"In one sentence, when would you reach for {topic} in {language}?"
+    )
+    return (
+        f"### Definition\n{definition}\n\n"
+        f"### Syntax\n```{language.lower()}\n{syntax}\n```\n\n"
+        f"### Example\n```{language.lower()}\n{syntax}\n```\n"
+        f"_The snippet above is the minimal working example at level {difficulty}._\n\n"
+        f"### Quick Check\n{check}"
+    )
