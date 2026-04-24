@@ -76,3 +76,18 @@ def hint(state: AgentState, answer: str = "") -> Tuple[str, str]:
         max_tokens=300,
     )
     return text, provider
+
+def interview(state: AgentState, time_limit: int = 15) -> Tuple[str, str]:
+    fallback = offline_interview(state.topic, state.language, state.difficulty, time_limit)
+    text, provider = llm_complete(
+        SYSTEM_PROMPT,
+        INTERVIEW_PROMPT.format(
+            topic=state.topic,
+            language=state.language,
+            difficulty=state.difficulty,
+            time_limit=time_limit,
+        ),
+        fallback=fallback,
+        temperature=0.6,
+    )
+    return text, provider
