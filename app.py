@@ -127,3 +127,46 @@ if do_auto:
     elif suggested == "challenge": do_challenge = True
     elif suggested == "hint":      do_hint = True
     elif suggested == "interview": do_interview = True
+
+def _toast_badges(badges):
+    for b in badges:
+        st.toast(f"🏆 New badge: {b}", icon="🎉")
+
+
+if do_teach:
+    record_topic(state, state.topic, state.language)
+    with st.spinner(f"Preparing a lesson on **{state.topic}** in {state.language}…"):
+        text, prov = agent.teach(state)
+    state.last_lesson = text
+    state.phase = "taught"
+    add_history(state, "agent", f"**Lesson** ({prov})\n\n{text}")
+
+if do_challenge:
+    record_topic(state, state.topic, state.language)
+    with st.spinner("Generating a challenge…"):
+        text, prov = agent.challenge(state)
+    state.last_challenge = text
+    state.last_user_answer = ""
+    state.last_verdict = ""
+    state.phase = "challenged"
+    add_history(state, "agent", f"**Challenge** ({prov})\n\n{text}")
+
+if do_interview:
+    record_topic(state, state.topic, state.language)
+    with st.spinner("Setting up the interview question…"):
+        text, prov = agent.interview(state, time_limit=10 + 5 * state.difficulty)
+    state.last_challenge = text
+    state.last_user_answer = ""
+    state.last_verdict = ""
+    state.phase = "interview"
+    add_history(state, "agent", f"**Interview Question** ({prov})\n\n{text}")
+
+if do_hint:
+    if not state.last_challenge:
+        st.warning("Start a challenge first — there's nothing to hint at yet.")
+    else:
+        with st.spinner("Thinking of a nudge…"):
+            text, prov = agent.hint(state, answer=state.last_user_answer)
+        state.last_hint = text
+        register_hint(state)
+        add_history(state, "agent", f"**Hint** ({prov})\n\n{text}")
