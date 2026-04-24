@@ -298,6 +298,7 @@ def offline_evaluate(challenge: str, answer: str, topic: str, language: str) -> 
                 "function signature and the base case before submitting.\n"
                 "HINT: Start by writing the function header and a return statement "
                 "for the simplest input.")
+    
     line_count = len([ln for ln in a.splitlines() if ln.strip()])
     has_return = bool(re.search(r"\breturn\b", a))
     has_loop_or_rec = bool(re.search(r"\bfor\b|\bwhile\b", a)) or _looks_recursive(a)
@@ -336,3 +337,38 @@ def offline_hint(challenge: str, answer: str, topic: str, language: str) -> str:
     return (f"Think about what `{kw}` does in {language}: "
             f"identify the smallest sub-problem first, then extend it. "
             f"Try writing one line that handles the example input.")
+def _format_challenge(problem: str, inp: str, out: str, ex: str) -> str:
+    return (
+        f"**Problem**\n{problem}\n\n"
+        f"**Input**\n{inp}\n\n"
+        f"**Output**\n{out}\n\n"
+        f"**Example**\n```\n{ex}\n```"
+    )
+
+
+def _norm(s: str) -> str:
+    return (s or "").strip().lower()
+
+
+def _looks_recursive(code: str) -> bool:
+   
+    m = re.search(r"def\s+(\w+)\s*\(", code) or re.search(r"function\s+(\w+)\s*\(", code)
+    if not m:
+        return False
+    name = m.group(1)
+    body = code[m.end():]
+    return bool(re.search(rf"\b{name}\s*\(", body))
+
+
+def _topic_keywords(topic: str):
+    t = _norm(topic)
+    return {
+        "loops": ["for", "while", "range"],
+        "arrays": ["[", "list", "array", "len"],
+        "functions": ["def", "function", "return"],
+        "recursion": ["return", "self-call"],
+        "conditionals": ["if", "else", "elif"],
+        "strings": ["str", "string", "char"],
+        "dictionaries": ["dict", "map", "{"],
+        "classes": ["class", "self", "this"],
+    }.get(t, [t])
