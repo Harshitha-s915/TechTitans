@@ -20,3 +20,17 @@ from utils import (
     offline_interview,
 )
 from state import AgentState
+def teach(state: AgentState) -> Tuple[str, str]:
+    """Return (lesson_markdown, provider_used)."""
+    fallback = offline_lesson(state.topic, state.language, state.difficulty)
+    text, provider = llm_complete(
+        SYSTEM_PROMPT,
+        TEACH_PROMPT.format(
+            topic=state.topic,
+            language=state.language,
+            difficulty=state.difficulty,
+        ),
+        fallback=fallback,
+        temperature=0.4,
+    )
+    return text, provider
