@@ -8,9 +8,7 @@ from typing import Tuple, Optional
 
 import requests
 from dotenv import load_dotenv
-import re
 
-_VERDICT_RE = re.compile(r"(correct|incorrect|partial)", re.IGNORECASE)
 load_dotenv()
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -68,7 +66,7 @@ def llm_complete(
     except Exception:
         return fallback, "offline"
     
-    _VERDICT_RE = re.compile(r"VERDICT\s*:\s*(CORRECT|PARTIAL|INCORRECT)", re.I)
+_VERDICT_RE = re.compile(r"VERDICT\s*:\s*(CORRECT|PARTIAL|INCORRECT)", re.I)
 _FEEDBACK_RE = re.compile(r"FEEDBACK\s*:\s*(.+?)(?:\nHINT\s*:|\Z)", re.I | re.S)
 _HINT_RE = re.compile(r"HINT\s*:\s*(.+?)\Z", re.I | re.S)
 
