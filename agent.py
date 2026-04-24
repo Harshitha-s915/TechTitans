@@ -20,6 +20,8 @@ from utils import (
     offline_interview,
 )
 from state import AgentState
+
+
 def teach(state: AgentState) -> Tuple[str, str]:
     """Return (lesson_markdown, provider_used)."""
     fallback = offline_lesson(state.topic, state.language, state.difficulty)
@@ -34,6 +36,7 @@ def teach(state: AgentState) -> Tuple[str, str]:
         temperature=0.4,
     )
     return text, provider
+
 def challenge(state: AgentState) -> Tuple[str, str]:
     fallback = offline_challenge(state.topic, state.language, state.difficulty)
     text, provider = llm_complete(
@@ -47,6 +50,7 @@ def challenge(state: AgentState) -> Tuple[str, str]:
         temperature=0.7,
     )
     return text, provider
+
 def evaluate(state: AgentState, answer: str) -> Tuple[Dict, str]:
     fallback = offline_evaluate(state.last_challenge, answer, state.topic, state.language)
     text, provider = llm_complete(
