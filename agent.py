@@ -95,3 +95,18 @@ def interview(state: AgentState, time_limit: int = 15) -> Tuple[str, str]:
         temperature=0.6,
     )
     return text, provider
+
+def evaluate_interview(state: AgentState, answer: str) -> Tuple[Dict, str]:
+    fallback = offline_evaluate(state.last_challenge, answer, state.topic, state.language)
+    text, provider = llm_complete(
+        SYSTEM_PROMPT,
+        INTERVIEW_EVAL_PROMPT.format(
+            topic=state.topic,
+            language=state.language,
+            challenge=state.last_challenge or "(no question)",
+            answer=answer,
+        ),
+        fallback=fallback,
+        temperature=0.2,
+    )
+    return parse_evaluation(text), provider
