@@ -248,3 +248,13 @@ if state.last_verdict:
         f"<div class='{cls}'>{icon} <b>{state.last_verdict}</b> — {state.last_feedback}{hint_html}</div>",
         unsafe_allow_html=True,
     )
+
+with st.expander(f"🗒️ Session history ({len(state.history)} entries)", expanded=False):
+    if not state.history:
+        st.caption("Nothing yet — your lessons, challenges, and evaluations will show up here.")
+    for i, msg in enumerate(reversed(state.history[-20:])):
+        st.markdown(f"**{len(state.history)-i}.** {msg['content']}")
+        st.markdown("---")
+
+
+st.caption("Built with Streamlit • Groq Llama 3.3 • Offline fallback always available")
