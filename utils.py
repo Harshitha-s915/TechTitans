@@ -22,3 +22,46 @@ def has_groq_key() -> bool:
 
 def active_provider() -> str:
     return "groq" if has_groq_key() else "offline"
+
+def llm_complete(
+    system_prompt: str,
+    user_prompt: str,
+    *,
+    fallback: str,
+    temperature: float = 0.4,
+    max_tokens: int = 900,
+) -> Tuple[str, str]:
+    """
+    Returns (text, provider_used).
+    `fallback` is the offline string to return if Groq is unavailable.
+    """
+    if not has_groq_key():
+        return fallback, "offline"
+
+    try:
+        resp = requests.post(
+            GROQ_API_URL,
+            headers={
+                "Authorization": f"Bearer {os.getenv('GROQ_API_KEY').strip()}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": DEFAULT_MODEL,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            },
+            timeout=REQUEST_TIMEOUT,
+        )
+        if resp.status_code != 200:
+            return fallback, "offline"
+        data = resp.json()
+        text = data["choices"][0]["message"]["content"].strip()
+        if not text:
+            return fallback, "offline"
+        return text, "groq"
+    except Exception:
+        return fallback, "offline"
