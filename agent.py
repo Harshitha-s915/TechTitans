@@ -34,3 +34,16 @@ def teach(state: AgentState) -> Tuple[str, str]:
         temperature=0.4,
     )
     return text, provider
+def challenge(state: AgentState) -> Tuple[str, str]:
+    fallback = offline_challenge(state.topic, state.language, state.difficulty)
+    text, provider = llm_complete(
+        SYSTEM_PROMPT,
+        CHALLENGE_PROMPT.format(
+            topic=state.topic,
+            language=state.language,
+            difficulty=state.difficulty,
+        ),
+        fallback=fallback,
+        temperature=0.7,
+    )
+    return text, provider
